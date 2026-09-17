@@ -1,0 +1,19 @@
+{
+  "name": "cursor-mercury-link",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Experimental patch that adds Inception Mercury models to Cursor with an API key stored in Cursor's settings",
+  "license": "MIT",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "test": "node --test test/*.test.mjs",
+    "check": "node install.mjs --check",
+    "install:patch": "node install.mjs",
+    "restore": "node install.mjs --restore",
+    "verify": "node scripts/verify-build.mjs",
+    "derive-symbols": "node scripts/derive-symbols.mjs"
+  }
+}
