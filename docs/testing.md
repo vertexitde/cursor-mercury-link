@@ -1,15 +1,15 @@
 # Testing notes
 
-Updated on September 17, 2026.
+Updated on September 18, 2026.
 
 ## Environment
 
 | Component | Version |
 | --- | --- |
 | Operating system | Windows, x64 |
-| Cursor | 3.21.9, commit `9998796a6096ce83d83a9332bfe7473b985db750` |
+| Cursor | 3.21.12, commit `05ddb9e824590e2c1db6bd2548dd71bf67ac9d20` (and 3.21.9, commit `9998796a6096ce83d83a9332bfe7473b985db750`) |
 | Node.js | 26.7.0 |
-| Companion patches | cursor-gpt-link and cursor-claude-link, both installed for 3.21.9 |
+| Companion patches | cursor-gpt-link and cursor-claude-link, both installed for the same build |
 
 ## Inception API, verified live
 
@@ -36,6 +36,10 @@ Unit tests (`npm test`) cover request preparation, stream normalisation, error m
 Live through the bridge, a single streamed request combining a `developer` message, an image part, a PDF part, `max_tokens`, `reasoning.effort: "xhigh"`, `store`, `service_tier` and `prompt_cache_key` completed with a `read_file` tool call. The only `null` left in the stream was `finish_reason`, as in the OpenAI format. A missing key returned 401 before contacting Inception; an invalid key returned Inception's 401 with a pointer to the settings card; an unknown model returned 404.
 
 After installation, the bridge started by Cursor served both models and streamed tool calls for Mercury 2.5 (medium effort, about 1.0 s) and Mercury 2 (instant, about 0.4 s).
+
+## Cursor 3.21.12 update
+
+Cursor 3.21.12 renamed the obfuscated workbench symbols again without changing the anchored code. `scripts/derive-symbols.mjs` was run against the original 3.21.12 bundles and reproduced the reviewed 3.21.9 values when run against that build first, so only `symbols-3.21.12.json`, the file hashes and the installer version needed to change. Both verification scenarios and the unit tests pass on 3.21.12, and all three patches were installed together; Cursor started with no workbench errors and the bridge served both models. Names are recycled between builds, so per-version symbol tables are never edited symbol by symbol.
 
 ## Cursor bundles
 

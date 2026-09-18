@@ -3,7 +3,7 @@
 // (combined install), then executes the new code paths with stubs.
 // Cursor's bundled code is read locally and never included in this repository.
 //
-//   node scripts/verify-build.mjs --original <resources/app | gpt backup dir> [--combined <resources/app>]
+//   node scripts/verify-build.mjs --original <resources/app | companion backup dir> [--combined <resources/app>] [--version 3.21.12]
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -13,6 +13,7 @@ import {patchWorkbench, patchRuntime, providerConfigBranch, mercuryReasoningBran
 import {settingsCardSrc, apiKeyName} from '../settings-card.mjs';
 import {pickerSectionHelpersSrc} from '../picker-sections.mjs';
 import {prefix, providerModels} from '../models.mjs';
+import {supportedVersions} from '../build-support.mjs';
 import {verifyConversationActionsWorkbench, verifyConversationActionsRuntime} from './checks/conversation-actions-check.mjs';
 import {verifySubagentLifecycle} from './checks/subagent-lifecycle-check.mjs';
 import {verifySubagentRegistration} from './checks/subagent-registration-check.mjs';
@@ -24,7 +25,9 @@ import {verifyWorkbenchRouting} from './checks/workbench-routing-check.mjs';
 const args = Object.fromEntries(process.argv.slice(2).reduce((pairs, value, i, all) => (i % 2 ? pairs : [...pairs, [all[i].slice(2), all[i + 1]]]), []));
 if (!args.original) throw new Error('Usage: node scripts/verify-build.mjs --original <resources/app | gpt backup dir> [--combined <resources/app>]');
 const here = path.dirname(new URL(import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, '$1'));
-const symbols = JSON.parse(fs.readFileSync(path.join(here, '..', 'symbols-3.21.9.json'), 'utf8'));
+// Default to the newest reviewed build; --version checks an older one.
+const version = args.version ?? supportedVersions[0];
+const symbols = JSON.parse(fs.readFileSync(path.join(here, '..', `symbols-${version}.json`), 'utf8'));
 const config = {port:43189, key:'0'.repeat(64)};
 
 function bundleFiles(dir) {

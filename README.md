@@ -9,9 +9,10 @@ Companion projects: [cursor-gpt-link](https://github.com/vertexitde/cursor-gpt-l
 | Item | Current status |
 | --- | --- |
 | Client platform | Windows x64 |
-| Supported Cursor | 3.21.9, commit `9998796a6096ce83d83a9332bfe7473b985db750` |
+| Supported Cursor | 3.21.12, commit `05ddb9e824590e2c1db6bd2548dd71bf67ac9d20`; 3.21.9, commit `9998796a6096ce83d83a9332bfe7473b985db750` |
 | Models | Mercury 2.5 (260K context), Mercury 2 (128K context) |
 | Inception API | Text, tool calls, parallel tool calls and streaming verified live on September 17, 2026 |
+| Cursor 3.21.12 | Symbols re-derived and reviewed; all automated checks pass standalone and on top of both companions |
 | Standalone and combined install | Automated checks pass on original bundles and on top of cursor-gpt-link and cursor-claude-link |
 | Subagents | Task bubble registration, empty model inheritance, Explore Subagent Model with its effort, and stop cascade pass automated checks |
 | Queued follow-ups and Plan to Build | Pass automated checks |
@@ -82,7 +83,7 @@ A Cursor update replaces the patched files. The installer refuses unknown builds
 
 ```powershell
 node scripts/derive-symbols.mjs <path to original resources/app>
-node scripts/verify-build.mjs --original <original resources/app> --combined <resources/app with companions installed>
+node scripts/verify-build.mjs --original <original resources/app> --combined <resources/app with companions installed> [--version <build>]
 ```
 
 `derive-symbols` locates each symbol by the role it plays and fails if any match is missing or ambiguous. Then remove the stale `installed.json`, and reinstall in order: ChatGPT, Claude, Mercury.
