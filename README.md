@@ -9,10 +9,10 @@ Companion projects: [cursor-gpt-link](https://github.com/vertexitde/cursor-gpt-l
 | Item | Current status |
 | --- | --- |
 | Client platform | Windows x64 |
-| Supported Cursor | 3.21.18, commit `c4730f7d93d787d9ab120af715999f0345ee5bc0`; 3.21.16, commit `8ae78e8eee1e63479c7e0504b664bc0a80c68000`; 3.21.13, commit `e44a49c17e334d442e58bbde931d791200f014a0`; 3.21.12, commit `05ddb9e824590e2c1db6bd2548dd71bf67ac9d20`; 3.21.9, commit `9998796a6096ce83d83a9332bfe7473b985db750` |
+| Supported Cursor | 3.22.5, commit `a00aa8754ab5bae70b637d98e126f9dbd4e1e5d0`; 3.21.18, commit `c4730f7d93d787d9ab120af715999f0345ee5bc0`; 3.21.16, commit `8ae78e8eee1e63479c7e0504b664bc0a80c68000`; 3.21.13, commit `e44a49c17e334d442e58bbde931d791200f014a0`; 3.21.12, commit `05ddb9e824590e2c1db6bd2548dd71bf67ac9d20`; 3.21.9, commit `9998796a6096ce83d83a9332bfe7473b985db750` |
 | Models | Mercury 2.5 (260K context), Mercury 2 (128K context) |
 | Inception API | Text, tool calls, parallel tool calls and streaming verified live on September 17, 2026 |
-| Cursor 3.21.18 | Symbols re-derived and reviewed; all automated checks pass standalone and on top of both companions |
+| Cursor 3.22.5 | Symbols re-derived and reviewed; all automated checks pass standalone and on top of both companions |
 | Standalone and combined install | Automated checks pass on original bundles and on top of cursor-gpt-link and cursor-claude-link |
 | Subagents | Task bubble registration, empty model inheritance, Explore Subagent Model with its effort, and stop cascade pass automated checks |
 | Queued follow-ups and Plan to Build | Pass automated checks |

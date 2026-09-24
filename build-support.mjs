@@ -3,7 +3,7 @@ import path from 'node:path';
 import os from 'node:os';
 import crypto from 'node:crypto';
 
-export const supportedVersions = ['3.21.18', '3.21.16', '3.21.13', '3.21.12', '3.21.9'];
+export const supportedVersions = ['3.22.5', '3.21.18', '3.21.16', '3.21.13', '3.21.12', '3.21.9'];
 export const sha256 = value => crypto.createHash('sha256').update(value).digest('hex');
 
 export function cursorRoot() {

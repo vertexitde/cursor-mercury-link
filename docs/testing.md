@@ -1,13 +1,13 @@
 # Testing notes
 
-Updated on September 22, 2026.
+Updated on September 24, 2026.
 
 ## Environment
 
 | Component | Version |
 | --- | --- |
 | Operating system | Windows, x64 |
-| Cursor | 3.21.18, commit `c4730f7d93d787d9ab120af715999f0345ee5bc0` (earlier reviewed builds: 3.21.16, 3.21.13, 3.21.12 and 3.21.9) |
+| Cursor | 3.22.5, commit `a00aa8754ab5bae70b637d98e126f9dbd4e1e5d0` (earlier reviewed builds: 3.21.18, 3.21.16, 3.21.13, 3.21.12 and 3.21.9) |
 | Node.js | 26.7.0 |
 | Companion patches | cursor-gpt-link and cursor-claude-link, both installed for the same build |
 
@@ -36,6 +36,10 @@ Unit tests (`npm test`) cover request preparation, stream normalisation, error m
 Live through the bridge, a single streamed request combining a `developer` message, an image part, a PDF part, `max_tokens`, `reasoning.effort: "xhigh"`, `store`, `service_tier` and `prompt_cache_key` completed with a `read_file` tool call. The only `null` left in the stream was `finish_reason`, as in the OpenAI format. A missing key returned 401 before contacting Inception; an invalid key returned Inception's 401 with a pointer to the settings card; an unknown model returned 404.
 
 After installation, the bridge started by Cursor served both models and streamed tool calls for Mercury 2.5 (medium effort, about 1.0 s) and Mercury 2 (instant, about 0.4 s).
+
+## Cursor 3.22.5 update
+
+Cursor 3.22.5 renamed 42 of the editor's and 41 of the Agents Window's derived symbols, and `scripts/derive-symbols.mjs` still matched every one of them exactly once after reproducing the reviewed 3.21.18 values. Two anchors moved with the minor release: the default model map renamed its prefix binding and mapper, and `subscribeHeaders` replaced its disposed-store ternary with an early return and dropped the reactive read. `subagent-lifecycle.mjs` now handles both shapes; the older builds keep their original treatment. Both verification scenarios and the unit tests pass, and all three patches were installed together; Cursor started with no workbench errors and the bridge served both models.
 
 ## Cursor 3.21.18 update
 

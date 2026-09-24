@@ -103,12 +103,18 @@ export function patchSubagentLifecycle(source, surface, prefix, symbols) {
   source = once(source, stale, stale.replace(')&&(n=', '||('+handle+'.subagentInfo&&subscriptionComposer(this.composerDataService,this.composerId,__subscriptionSubagentPrefixes)&&n.map!=='+untrack+'(()=>'+handle+'.conversationMap)))&&(n='));
   // There are several transcript implementations; anchor the Solid composer one.
   // Cursor 3.21.1 returns an empty disposable when the store is already gone;
-  // do not hydrate through a disposed store.
-  const matches = [...source.matchAll(/subscribeHeaders\((\w+)\)\{return (this\._store\.isDisposed\?[\w$]+\.None:)?([\w$]+)\(\(\)=>\{const (\w+)=this.getComposerDataForReactiveTracking\(\);/g)];
-  if (matches.length !== 1) throw new Error('Transcript subscription anchor is not unique');
+  // do not hydrate through a disposed store. Cursor 3.22.5 turned that ternary
+  // into an early return and dropped the reactive read from the computed, so
+  // hydrating after the guard needs no disposed check of its own.
   const warm = 'warmSubscriptionTranscript(this,__subscriptionSubagentPrefixes);';
-  const hydrate = matches[0][2] ? 'if(!this._store.isDisposed)'+warm : warm;
-  source = once(source, matches[0][0], matches[0][0].replace('{return ', '{'+hydrate+'return '));
+  const reactive = [...source.matchAll(/subscribeHeaders\((\w+)\)\{return (this\._store\.isDisposed\?[\w$]+\.None:)?([\w$]+)\(\(\)=>\{const (\w+)=this.getComposerDataForReactiveTracking\(\);/g)];
+  const guarded = [...source.matchAll(/subscribeHeaders\((\w+)\)\{if\(this\._store\.isDisposed\)return [\w$]+\.None;/g)];
+  if (reactive.length === 1) {
+    const hydrate = reactive[0][2] ? 'if(!this._store.isDisposed)'+warm : warm;
+    source = once(source, reactive[0][0], reactive[0][0].replace('{return ', '{'+hydrate+'return '));
+  } else if (guarded.length === 1) {
+    source = once(source, guarded[0][0], guarded[0][0]+warm);
+  } else throw new Error('Transcript subscription anchor is not unique');
   source = once(source, 'dispose(){this.editDisplayCache.clear(),', 'dispose(){this.__subscriptionDisposed=true;this.editDisplayCache.clear(),');
   return 'var __subscriptionSubagentPrefixes='+JSON.stringify([prefix])+';\n'+
     [subscriptionComposer, subscriptionRequest, subscriptionRequestSignal, createSubscriptionSubagent, runSubscriptionSubagent, warmSubscriptionTranscript].map(fn=>fn.toString()).join('\n')+'\n'+source;
