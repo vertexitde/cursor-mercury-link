@@ -2,7 +2,10 @@ import assert from 'node:assert/strict';
 
 // Exercise the patched workbench routing method with synthetic services: Remote
 // SSH selection, the Explore model catalog and the forwarded run options.
-export async function verifyWorkbenchRouting(source, prefix='inception-mercury/') {
+export async function verifyWorkbenchRouting(source, prefix='inception-mercury/', {remoteTunnel = false} = {}) {
+  // With the tunnel, a remote session runs the agent on the SSH host, so a
+  // Mercury model takes the same route as an ordinary one.
+  const remoteRoute = remoteTunnel ? 'workspace' : 'dedicated';
   const name=source.includes('async _subscriptionNativeLocalAgent(')?'_subscriptionNativeLocalAgent':'runLocalAgentInExtensionHost';
   const start = source.indexOf('async '+name+'(');
   const end = source.indexOf('}runLocalAgentInDedicatedExtensionHost(', start);
@@ -16,7 +19,7 @@ export async function verifyWorkbenchRouting(source, prefix='inception-mercury/'
   const factory = new Function('__ChatgptSelectedModelIds','__ClaudeSelectedModelIds','__MercurySelectedModelIds','__useChatgptDedicatedRuntime','__isClaudeBridgeModel','__isMercuryModel',trim,binary,setting,
     'return ({' + method + '}).runLocalAgentInExtensionHost;');
   for (const [modelId, authority, nativeSetting, expected] of [
-    [prefix+'mercury-2.5', 'ssh-remote+test-host', false, 'dedicated'],
+    [prefix+'mercury-2.5', 'ssh-remote+test-host', false, remoteRoute],
     [prefix+'mercury-2.5', undefined, false, 'workspace'],
     ['ordinary-model', 'ssh-remote+test-host', false, 'workspace'],
     ['ordinary-model', 'ssh-remote+test-host', true, 'dedicated']

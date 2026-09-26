@@ -13,7 +13,7 @@ import {patchWorkbench, patchRuntime, providerConfigBranch, mercuryReasoningBran
 import {settingsCardSrc, apiKeyName} from '../settings-card.mjs';
 import {pickerSectionHelpersSrc} from '../picker-sections.mjs';
 import {prefix, providerModels} from '../models.mjs';
-import {supportedVersions} from '../build-support.mjs';
+import {supportedVersions, tunnelledBuilds} from '../build-support.mjs';
 import {verifyConversationActionsWorkbench, verifyConversationActionsRuntime} from './checks/conversation-actions-check.mjs';
 import {verifySubagentLifecycle} from './checks/subagent-lifecycle-check.mjs';
 import {verifySubagentRegistration} from './checks/subagent-registration-check.mjs';
@@ -28,6 +28,8 @@ const here = path.dirname(new URL(import.meta.url).pathname.replace(/^\/([A-Za-z
 // Default to the newest reviewed build; --version checks an older one.
 const version = args.version ?? supportedVersions[0];
 const symbols = JSON.parse(fs.readFileSync(path.join(here, '..', `symbols-${version}.json`), 'utf8'));
+// Builds that let the agent run on the SSH host instead of the dedicated UI runtime.
+const remoteTunnel = tunnelledBuilds.includes(version);
 const config = {port:43189, key:'0'.repeat(64)};
 
 function bundleFiles(dir) {
@@ -107,7 +109,13 @@ function verifyWorkbenchWiring(content, surface) {
   assert.match(content, /getAvailableDefaultModels\(\)\{return __withMercuryModels\(/, 'default models include Mercury');
   assert.ok(content.includes(`${s.mapVar}=__withMercuryModels(`), 'mapped models include Mercury');
   assert.match(content, /__isMercuryModel\(u\?\.requestedModel\?\.modelId\?\?i\?\.modelId\)/, 'Mercury requests use the local runtime');
-  assert.ok(content.includes(`(__isMercuryModel(${s.hostModelVar})&&Boolean(this.environmentService.remoteAuthority)||${s.host}(this.storageService,"useDedicatedLocalAgentRuntimeHost"))`), 'remote SSH routing');
+  // With the tunnel, a remote session keeps Cursor's own decision and runs the
+  // agent on the host; before it, Mercury was forced into the local runtime.
+  const forced = `(__isMercuryModel(${s.hostModelVar})&&Boolean(this.environmentService.remoteAuthority)||${s.host}(this.storageService,"useDedicatedLocalAgentRuntimeHost"))`;
+  if (remoteTunnel) {
+    assert.ok(!content.includes(forced), 'remote sessions are not forced into the local runtime');
+    assert.ok(content.includes(`${s.host}(this.storageService,"useDedicatedLocalAgentRuntimeHost")`), 'the native runtime decision is still there');
+  } else assert.ok(content.includes(forced), 'remote SSH routing');
   assert.ok(content.includes('__ensureMercuryTaskBubble(this._composerDataService,'), 'task bubble repair wired');
   for (const registry of ['__subscriptionSubagentPrefixes', '__subscriptionActionPrefixes']) {
     const list = JSON.parse(content.match(new RegExp(`var ${registry}=(\\[[^;]+\\]);`))[1]);
@@ -150,7 +158,7 @@ const registry = (content, name) => JSON.parse(content.match(new RegExp(`var ${n
 async function scenario(label, dir) {
   const files = bundleFiles(dir);
   for (const surface of ['desktop', 'glass']) {
-    const content = patchWorkbench(fs.readFileSync(files[surface], 'utf8'), surface, symbols[surface], config);
+    const content = patchWorkbench(fs.readFileSync(files[surface], 'utf8'), surface, symbols[surface], config, {remoteTunnel});
     syntax(`${label}-${surface}`, content);
     verifyWorkbenchWiring(content, surface);
     await verifySettingsCard(content, surface);
@@ -160,7 +168,7 @@ async function scenario(label, dir) {
     await verifySubagentRegistration(content);
     await verifySubagentLifecycle(content, registry(content, '__subscriptionSubagentPrefixes'));
     await verifyConversationActionsWorkbench(content, registry(content, '__subscriptionActionPrefixes'));
-    await verifyWorkbenchRouting(content);
+    await verifyWorkbenchRouting(content, undefined, {remoteTunnel});
   }
   for (const name of ['exec', 'runtime']) {
     const content = patchRuntime(fs.readFileSync(files[name], 'utf8'));

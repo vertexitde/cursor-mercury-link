@@ -3,7 +3,8 @@ import path from 'node:path';
 import crypto from 'node:crypto';
 import {execFileSync} from 'node:child_process';
 import {fileURLToPath} from 'node:url';
-import {cursorRoot, requireSupportedOriginals, sha256} from './build-support.mjs';
+import {cursorRoot, requireSupportedOriginals, sha256, tunnelledBuilds} from './build-support.mjs';
+import {applyToDisk} from './ssh-forwarding.mjs';
 import {patchWorkbench, patchRuntime} from './patches.mjs';
 import {buildAutostart} from './autostart.mjs';
 
@@ -11,6 +12,16 @@ const version = '3.22.9';
 const dir = path.dirname(fileURLToPath(import.meta.url));
 const root = cursorRoot();
 const manifestPath = path.join(dir, 'installed.json');
+// From 3.22.9 a remote session runs the agent on the SSH host, so the bridge is
+// published on that host's loopback through an ssh reverse forward.
+const owner = 'cursor-mercury-link';
+const sshHosts = (process.argv.find(a => a.startsWith('--ssh-hosts=')) ?? '').slice('--ssh-hosts='.length).split(',').map(h => h.trim()).filter(Boolean);
+const skipSsh = process.argv.includes('--no-ssh');
+function reportSsh(result) {
+  if (!result.changed) { console.log('ssh forwarding: ' + (result.reason ?? 'unchanged')); return; }
+  console.log('ssh forwarding: ' + result.configPath + (result.hosts.length ? ' -> ' + result.hosts.join(', ') : ' (entries removed)'));
+  if (result.unknown?.length) console.log('ssh forwarding: not declared in the file, added anyway: ' + result.unknown.join(', '));
+}
 const configPath = path.join(dir, 'config.json');
 
 if (process.argv.includes('--restore')) {
@@ -27,6 +38,7 @@ if (process.argv.includes('--restore')) {
     fs.writeFileSync(linkedPath, JSON.stringify(linked, null, 2));
   }
   fs.renameSync(manifestPath, manifestPath + '.restored-' + Date.now());
+  if (!skipSsh) reportSsh(applyToDisk({owner, remove:true}));
   console.log('Mercury patch removed. Reload Cursor.');
   process.exit();
 }
@@ -43,7 +55,7 @@ const symbols = JSON.parse(fs.readFileSync(path.join(dir, 'symbols-' + version +
 const pending = [];
 for (const surface of ['desktop', 'glass']) {
   const target = path.join(root, 'out/vs/workbench/workbench.' + surface + '.main.js');
-  pending.push({path:target, content:patchWorkbench(fs.readFileSync(target, 'utf8'), surface, symbols[surface], config)});
+  pending.push({path:target, content:patchWorkbench(fs.readFileSync(target, 'utf8'), surface, symbols[surface], config, {remoteTunnel:tunnelledBuilds.includes(version)})});
 }
 for (const name of ['cursor-agent-exec', 'cursor-local-agent-runtime']) {
   const target = path.join(root, 'extensions', name, 'dist/main.js');
@@ -95,4 +107,5 @@ try {
   fs.renameSync(manifestPath, manifestPath + '.rolled-back-' + Date.now());
   throw error;
 }
+if (!skipSsh) reportSsh(applyToDisk({owner, port:config.port, hosts:sshHosts}));
 console.log('Mercury models installed. Add your Inception API key in Cursor Settings > Models, then reload Cursor.');

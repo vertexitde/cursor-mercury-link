@@ -39,7 +39,7 @@ export function providerConfigBranch(modelExpression, secretStorage) {
   return `if(__isMercuryModel(${modelExpression})){let __mercuryKey;try{__mercuryKey=await this.instantiationService.invokeFunction(a=>a.get(${secretStorage})).get(__mercuryApiKeyName)}catch{}return{baseUrl:__mercuryBridgeBase+"/v1",apiKey:__mercuryBridgeKey,customHeaders:__mercuryKey?{${JSON.stringify(keyHeader)}:__mercuryKey}:{}}}`;
 }
 
-export function patchWorkbench(source, surface, symbols, config) {
+export function patchWorkbench(source, surface, symbols, config, {remoteTunnel = false} = {}) {
   if (!['desktop', 'glass'].includes(surface)) throw new Error('Unknown workbench surface: ' + surface);
   if (source.includes('__mercuryBridgeBase')) throw new Error('Mercury patch marker already present.');
   const s = symbols;
@@ -67,10 +67,16 @@ export function patchWorkbench(source, surface, symbols, config) {
       .replace(`localMode:${local}.localMode})`, `localMode:${local}.localMode||__mercuryLocal})`)
       .replace(`if(${local}.localMode){`, `if(${local}.localMode||__mercuryLocal){`));
   }
-  // Remote SSH: keep inference local while tools run through the workspace host.
-  const dedicated = `${s.host}(this.storageService,"useDedicatedLocalAgentRuntimeHost")`;
-  source = once(source, dedicated, `(__isMercuryModel(${s.hostModelVar})&&Boolean(this.environmentService.remoteAuthority)||${dedicated})`);
-  if (source.includes(s.activation)) source = once(source, s.activation, s.activation.replace('return ', 'return typeof __mercuryBridgeBase==="string"||'));
+  // Remote SSH: builds up to 3.22.5 kept the agent in the dedicated UI runtime
+  // so the bridge stayed reachable. That runtime resolves paths with the
+  // client's own path module, so a Windows client turned the host's "/srv/app"
+  // into "C:\srv\app". From 3.22.9 the agent runs on the SSH host, as Cursor
+  // intends, and reaches the bridge through an ssh reverse forward.
+  if (!remoteTunnel) {
+    const dedicated = `${s.host}(this.storageService,"useDedicatedLocalAgentRuntimeHost")`;
+    source = once(source, dedicated, `(__isMercuryModel(${s.hostModelVar})&&Boolean(this.environmentService.remoteAuthority)||${dedicated})`);
+    if (source.includes(s.activation)) source = once(source, s.activation, s.activation.replace('return ', 'return typeof __mercuryBridgeBase==="string"||'));
+  }
 
   source = patchSettingsCard(source, once, s);
   source = patchMaxMode(patchSubagentSettingsWorkbench(source));

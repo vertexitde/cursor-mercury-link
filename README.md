@@ -18,7 +18,7 @@ Companion projects: [cursor-gpt-link](https://github.com/vertexitde/cursor-gpt-l
 | Queued follow-ups and Plan to Build | Pass automated checks |
 | Context window | Runtime reports 260K and 128K from the bridge catalog; checked against Cursor's native context budget |
 | Max mode | Chosen effort is kept with Max mode on; checked against Cursor's native variant solver |
-| Remote SSH | Inference stays local; routing passes automated checks, not yet tested on a real remote |
+| Remote SSH | From 3.22.9 the agent runs on the host and reaches the bridge through an ssh reverse forward the installer writes; automated checks pass, not yet tested on a real remote |
 | Local installation | Installed after both companions; restore and reinstall verified; Cursor starts with no workbench errors and the bridge streams tool calls from Inception |
 | In-app use | The picker section has been seen in Cursor. The settings card and agent turns with tools, edits and subagents have not yet been confirmed in the UI |
 | Node.js used locally | 26.7.0 |
@@ -43,6 +43,28 @@ Mercury Edit 2 is not added: it serves fill-in-the-middle and edit completions, 
 ## Images and PDFs
 
 Mercury models accept text only. The Inception API rejects image and file parts with HTTP 400 (verified live), and Inception's own model catalog lists `text` as the only input modality. The patch therefore reports the models as text-only to Cursor. If a conversation that already contains images or PDFs is continued with Mercury, for example after switching from Claude, those parts are replaced by a short note such as `[Image omitted: Mercury accepts text only.]` instead of failing the whole request.
+
+## Remote sessions
+
+In a Remote-SSH window the agent runs on the host, so the host has to reach the bridge. The installer adds a reverse forward to `~/.ssh/config`, inside a marked block it owns:
+
+```
+# >>> cursor subscription links: bridge forwarding >>>
+Host your-server
+    RemoteForward 127.0.0.1:43189 127.0.0.1:43189
+# <<< cursor subscription links: bridge forwarding <<<
+```
+
+The hosts are the ones you have opened in Cursor that are also declared in your `~/.ssh/config`; nothing else is touched, so ssh to anything outside that list, `git push` included, is unaffected. All three links share the block, each owning the line for its own port, and `npm run restore` removes only its own. A copy of the file as it was before the first change is kept as `config.before-cursor-links`.
+
+| Flag | Effect |
+| --- | --- |
+| `--ssh-hosts=a,b` | Configure exactly these hosts instead of the detected ones |
+| `--no-ssh` | Change nothing in `~/.ssh/config` |
+
+Two things to know. A second ssh session to the same host cannot bind the port again and ssh prints `remote port forwarding failed`; the session still works, and the first one keeps serving the bridge. And the bridge becomes reachable on that host's loopback, so only forward to hosts you trust with it. The bridge still requires its per-installation key.
+
+The agent on the host uses the server's own copy of Cursor's runtime under `~/.cursor-server`, which this patch does not touch. Model selection, tool calls and file edits work from there, but the runtime-side extras this patch adds locally, reasoning effort forwarding and the subagent model repairs, are not present on the host yet.
 
 ## Requirements
 
@@ -94,7 +116,7 @@ node scripts/verify-build.mjs --original <original resources/app> --combined <re
 - Cursor's local agent runtime asks the bridge for its model list and then sends chat completion requests to it. For each Mercury request, Cursor reads your Inception key from secret storage and sends it to the bridge in a request header. The bridge forwards it to `api.inceptionlabs.ai` and does not write it anywhere.
 - The bridge removes the `inception-mercury/` model prefix, maps the `developer` role to `system`, keeps only parameters the API accepts, limits output tokens to the model's maximum, and normalises streamed chunks to the usual OpenAI shape.
 - Missing or rejected keys and billing problems come back as readable errors that point to the settings card.
-- In the workbench, the patch adds the models and settings card, routes Mercury through the local runtime (including Remote SSH, where inference stays local), and joins the shared queue, stop and subagent handling that the companion patches install.
+- In the workbench, the patch adds the models and settings card, routes Mercury through the local runtime, and joins the shared queue, stop and subagent handling that the companion patches install. In a Remote-SSH window the agent runs on the host and reaches the bridge through an ssh reverse forward the installer writes; see [Remote sessions](#remote-sessions).
 
 ## Security
 
