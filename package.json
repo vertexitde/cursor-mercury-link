@@ -14,6 +14,7 @@
     "install:patch": "node install.mjs",
     "restore": "node install.mjs --restore",
     "verify": "node scripts/verify-build.mjs",
-    "derive-symbols": "node scripts/derive-symbols.mjs"
+    "derive-symbols": "node scripts/derive-symbols.mjs",
+    "install:remote": "node scripts/install-remote.mjs"
   }
 }

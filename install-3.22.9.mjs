@@ -4,7 +4,9 @@ import crypto from 'node:crypto';
 import {execFileSync} from 'node:child_process';
 import {fileURLToPath} from 'node:url';
 import {cursorRoot, requireSupportedOriginals, sha256, tunnelledBuilds} from './build-support.mjs';
-import {applyToDisk} from './ssh-forwarding.mjs';
+import {applyToDisk, readBlock, sshConfigPath} from './ssh-forwarding.mjs';
+import {syncKnownHosts} from './remote-runtime.mjs';
+import {link as remoteLink, marker as remoteMarker, prefix as remotePrefix, patchRuntime as remotePatchRuntime} from './runtime-link.mjs';
 import {patchWorkbench, patchRuntime} from './patches.mjs';
 import {buildAutostart} from './autostart.mjs';
 
@@ -108,4 +110,12 @@ try {
   throw error;
 }
 if (!skipSsh) reportSsh(applyToDisk({owner, port:config.port, hosts:sshHosts}));
+// Hosts that already carry the runtime patch are brought to this build too; a
+// host that was never patched is left alone.
+if (!process.argv.includes('--no-remote')) {
+  try {
+    const hosts = readBlock(fs.readFileSync(sshConfigPath(), 'utf8')).hosts;
+    if (hosts.length) syncKnownHosts({hosts, link:remoteLink, marker:remoteMarker, prefix:remotePrefix, patchRuntime:remotePatchRuntime});
+  } catch (error) { console.log('remote runtime: skipped, ' + error.message); }
+}
 console.log('Mercury models installed. Add your Inception API key in Cursor Settings > Models, then reload Cursor.');
