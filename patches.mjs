@@ -41,7 +41,9 @@ export function providerConfigBranch(modelExpression, secretStorage) {
 
 export function patchWorkbench(source, surface, symbols, config, {remoteTunnel = false} = {}) {
   if (!['desktop', 'glass'].includes(surface)) throw new Error('Unknown workbench surface: ' + surface);
-  if (source.includes('__mercuryBridgeBase')) throw new Error('Mercury patch marker already present.');
+  // The declaration, not the name: a companion's picker section may mention
+  // this constant defensively when it renders the usage label.
+  if (source.includes('const __mercuryBridgeBase=')) throw new Error('Mercury patch marker already present.');
   const s = symbols;
   source = workbenchPrelude(config) + source;
   source = patchPickerSections(source, once, s);
