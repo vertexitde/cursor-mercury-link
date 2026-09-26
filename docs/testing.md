@@ -1,13 +1,13 @@
 # Testing notes
 
-Updated on September 24, 2026.
+Updated on September 26, 2026.
 
 ## Environment
 
 | Component | Version |
 | --- | --- |
 | Operating system | Windows, x64 |
-| Cursor | 3.22.5, commit `a00aa8754ab5bae70b637d98e126f9dbd4e1e5d0` (earlier reviewed builds: 3.21.18, 3.21.16, 3.21.13, 3.21.12 and 3.21.9) |
+| Cursor | 3.22.9, commit `2ca0f45baa06796a86f6c6ba2b9bedacaf94c370` (earlier reviewed builds: 3.22.5, 3.21.18, 3.21.16, 3.21.13, 3.21.12 and 3.21.9) |
 | Node.js | 26.7.0 |
 | Companion patches | cursor-gpt-link and cursor-claude-link, both installed for the same build |
 
@@ -36,6 +36,10 @@ Unit tests (`npm test`) cover request preparation, stream normalisation, error m
 Live through the bridge, a single streamed request combining a `developer` message, an image part, a PDF part, `max_tokens`, `reasoning.effort: "xhigh"`, `store`, `service_tier` and `prompt_cache_key` completed with a `read_file` tool call. The only `null` left in the stream was `finish_reason`, as in the OpenAI format. A missing key returned 401 before contacting Inception; an invalid key returned Inception's 401 with a pointer to the settings card; an unknown model returned 404.
 
 After installation, the bridge started by Cursor served both models and streamed tool calls for Mercury 2.5 (medium effort, about 1.0 s) and Mercury 2 (instant, about 0.4 s).
+
+## Cursor 3.22.9 update
+
+Cursor 3.22.9 renamed 16 of the editor's and 31 of the Agents Window's derived symbols and changed nothing else; `scripts/derive-symbols.mjs` matched every one exactly once after reproducing the reviewed 3.22.5 values. Only `symbols-3.22.9.json`, the file hashes and the installer version changed. Both verification scenarios and the unit tests pass, and all three patches were installed together; Cursor started with no workbench errors and the bridge served both models.
 
 ## Cursor 3.22.5 update
 
