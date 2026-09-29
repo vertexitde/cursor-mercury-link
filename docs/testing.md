@@ -1,13 +1,13 @@
 # Testing notes
 
-Updated on September 26, 2026.
+Updated on September 29, 2026.
 
 ## Environment
 
 | Component | Version |
 | --- | --- |
 | Operating system | Windows, x64 |
-| Cursor | 3.22.9, commit `2ca0f45baa06796a86f6c6ba2b9bedacaf94c370` (earlier reviewed builds: 3.22.5, 3.21.18, 3.21.16, 3.21.13, 3.21.12 and 3.21.9) |
+| Cursor | 3.22.12, commit `3a92974361033b2051526321308c2740fe5912c0` (earlier reviewed builds: 3.22.9, 3.22.5, 3.21.18, 3.21.16, 3.21.13, 3.21.12 and 3.21.9) |
 | Node.js | 26.7.0 |
 | Companion patches | cursor-gpt-link and cursor-claude-link, both installed for the same build |
 
@@ -71,6 +71,10 @@ Verified without touching an installation, against copies of the original 3.22.9
 - a dry run on a copy of a real configuration, with `ssh -G` used to confirm that OpenSSH parses the result, attaches the three forwards to a configured host and leaves an unrelated host without any.
 
 Not yet confirmed: a live remote turn. The host's own runtime under `~/.cursor-server` is unpatched, so reasoning effort forwarding and the subagent model repairs are missing there.
+
+## Cursor 3.22.12 update
+
+Cursor 3.22.12 renamed 30 of the 50 derived symbols on each surface and changed nothing else; `scripts/derive-symbols.mjs` matched every one exactly once after reproducing the reviewed 3.22.9 values. Only `symbols-3.22.12.json`, the file hashes and the installer version changed. Both verification scenarios and the unit tests pass, and all three patches were installed together; Cursor started with no workbench errors and the bridge served both models.
 
 ## Cursor 3.22.9 update
 
