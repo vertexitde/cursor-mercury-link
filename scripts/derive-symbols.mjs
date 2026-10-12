@@ -44,20 +44,39 @@ export function deriveSurface(source) {
   // Model picker sections
   const group = unique('groupReturn', /return ([\w$]+)\.mergeLeadingIntoPromotedSection===!0\?\{leading:\[\],promoted:\[\.\.\.([\w$]+),\.\.\.([\w$]+)\],others:([\w$]+)\}:\{leading:\2,promoted:\3,others:\4\}/g);
   if (group) out.groupReturn = group[0];
-  const promoted = unique('promotedAnchor', /([\w$]+)\(([\w$]+),\{models:([\w$]+)\.promoted,title:([\w$]+)\?\.promotedSectionTitle/g);
-  if (promoted) {
+  // Up to 3.22 the promoted section is one expression inside the returned
+  // fragment. From 3.24 the picker went through the React compiler: the
+  // section becomes a memoized variable and the fragment's children list is
+  // rebuilt only when one of its memo slots changes.
+  const inline = [...source.matchAll(/([\w$]+)\(([\w$]+),\{models:([\w$]+)\.promoted,title:([\w$]+)\?\.promotedSectionTitle/g)];
+  const compiled = [...source.matchAll(/([\w$]+)=([\w$]+)\(([\w$]+),\{models:([\w$]+)\.promoted,title:([\w$]+),titleTrailing:([\w$]+),renderModel:([\w$]+)\},"promoted-models"\)/g)];
+  if (inline.length === 1 && compiled.length === 0) {
+    const promoted = inline[0];
     Object.assign(out, {promotedAnchor: promoted[0], jsx: promoted[1], fmt: promoted[2], modelsVar: promoted[3]});
     const render = within('renderModel', source.slice(promoted.index, promoted.index + 600), /renderModel:([\w$]+)\},"promoted-models"/);
     if (render) out.renderModel = render[1];
-  }
+  } else if (compiled.length === 1 && inline.length === 0) {
+    const promoted = compiled[0];
+    Object.assign(out, {promotedRender: promoted[0], promotedVar: promoted[1], jsx: promoted[2], fmt: promoted[3], modelsVar: promoted[4], renderModel: promoted[7]});
+    // The memoized fragment that lists the sections, right after the promoted one.
+    const escaped = promoted[1].replace(/\$/g, '\\$');
+    const tail = within('sectionsReturn', source.slice(promoted.index, promoted.index + 6000),
+      new RegExp(`return ((?:[\\w$]+\\[\\d+\\]!==[\\w$]+\\|\\|)*[\\w$]+\\[\\d+\\]!==[\\w$]+)\\?\\(([\\w$]+)=([\\w$]+)\\(([\\w$]+),\\{children:\\[([\\w$]+),${escaped},([\\w$]+),([\\w$]+)\\]\\}\\)`));
+    if (tail) out.sectionsReturn = tail[0];
+  } else problems.push(`promotedAnchor: ${inline.length} inline and ${compiled.length} compiled matches`);
 
   // Default model list mapping that is persisted afterwards
   const map = unique('modelMap', /const ([\w$]+)=([\w$]+)\(([\w$]+)\);\3=\3\.map\(([\w$]+)=>([\w$]+)\(\4\)\),[\w$]+\(\(\)=>\{this\.persistAvailableDefaultMod/g);
   if (map) Object.assign(out, {mapPrefix: `const ${map[1]}=${map[2]}(${map[3]});`, mapVar: map[3], mapper: `${map[4]}=>${map[5]}(${map[4]})`});
 
   // Local agent run gate
-  const run = unique('run', /async run\(([\w$,]+)\)\{const ([\w$]+)=([\w$]+)\(u,\{isRunningInTest:u\.isRunningInTest\?\?this\.environmentService\.enableSmokeTestDriver===!0,localMode:([\w$]+)\.localMode\}\);if\(\4\.localMode\)\{/g);
-  if (run) Object.assign(out, {runAnchor: run[0], runLocalVar: run[2], runFn: run[3], localMode: run[4]});
+  // Up to 3.22 the local mode is also passed into the run options; from 3.24
+  // only the branch checks it. The anchor keeps whichever form the build has.
+  const run = unique('run', /async run\(([\w$,]+)\)\{const ([\w$]+)=([\w$]+)\(u,\{isRunningInTest:u\.isRunningInTest\?\?this\.environmentService\.enableSmokeTestDriver===!0(?:,localMode:([\w$]+)\.localMode)?\}\);if\(([\w$]+)\.localMode\)\{/g);
+  if (run) {
+    if (run[4] !== undefined && run[4] !== run[5]) problems.push('run: the options and the branch read different local-mode flags');
+    Object.assign(out, {runAnchor: run[0], runLocalVar: run[2], runFn: run[3], localMode: run[5]});
+  }
 
   // Dedicated runtime host selector and the requested model in scope there
   const host = unique('dedicatedHost', /([\w$]+)\(this\.storageService,"useDedicatedLocalAgentRuntimeHost"\)\?await this\.runLocalAgentInDedicatedExtensionHost/g);

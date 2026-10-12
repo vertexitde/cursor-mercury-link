@@ -1,5 +1,14 @@
 import assert from 'node:assert/strict';
 
+// The method ends where its source parses as one method. Its neighbour in the
+// class changed between builds, so the parser decides instead of a landmark.
+function methodSource(source, start) {
+  for (let end = source.indexOf('}', start); end >= 0 && end - start < 200000; end = source.indexOf('}', end + 1)) {
+    const candidate = source.slice(start, end + 1);
+    try { new Function('return ({' + candidate + '})'); return candidate; } catch {}
+  }
+}
+
 // Exercise the patched workbench routing method with synthetic services: Remote
 // SSH selection, the Explore model catalog and the forwarded run options.
 export async function verifyWorkbenchRouting(source, prefix='inception-mercury/', {remoteTunnel = false} = {}) {
@@ -8,9 +17,9 @@ export async function verifyWorkbenchRouting(source, prefix='inception-mercury/'
   const remoteRoute = remoteTunnel ? 'workspace' : 'dedicated';
   const name=source.includes('async _subscriptionNativeLocalAgent(')?'_subscriptionNativeLocalAgent':'runLocalAgentInExtensionHost';
   const start = source.indexOf('async '+name+'(');
-  const end = source.indexOf('}runLocalAgentInDedicatedExtensionHost(', start);
-  assert.ok(start >= 0 && end > start, 'Native workbench routing method found');
-  const method = source.slice(start, end + 1).replace('async '+name+'(', 'async runLocalAgentInExtensionHost(');
+  const body = start >= 0 ? methodSource(source, start) : undefined;
+  assert.ok(body, 'Native workbench routing method found');
+  const method = body.replace('async '+name+'(', 'async runLocalAgentInExtensionHost(');
   const identity = value => value;
   const injected=helper=>{const match=source.match(new RegExp('function '+helper+'\\(existing,[\\s\\S]*?\\n}'));return match?new Function('return ('+match[0]+')')():identity;};
   const trim=method.match(/([\w$]+)\([\w$]+\.requestedModel\?\.modelId\)/)[1];

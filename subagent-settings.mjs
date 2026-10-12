@@ -36,7 +36,9 @@ export function patchSubagentSettingsWorkbench(source) {
 }
 export function patchSubagentSettingsRuntime(source) {
   // Cursor 3.21.1 rotated the minified locals in both runtime bundles.
-  const matches=[...source.matchAll(/function ([\w$]+)\(e\)\{const t=\(\)=>!1,([\w$]+)=[\w$]+\(e\),([\w$]+)=null!=\2\?\2:e\.localProvider;/g)];
+  // Up to 3.22 the nullish fallback is down-levelled (null!=r?r:…); from 3.24
+  // the runtimes keep the native operator (r??…).
+  const matches=[...source.matchAll(/function ([\w$]+)\(e\)\{const t=\(\)=>!1,([\w$]+)=[\w$]+\(e\)(?:,([\w$]+)=null!=\2\?\2:e\.localProvider|\?\?e\.localProvider);/g)];
   if(matches.length!==1)throw new Error('Local task configuration anchor is not unique');
   const match=matches[0],original=match[1];
   source=once(source,match[0],'function '+original+'(e){return __MercuryConfigureTaskProps(e,__MercuryNativeTaskProps(e))}'+match[0].replace('function '+original+'(','function __MercuryNativeTaskProps('));

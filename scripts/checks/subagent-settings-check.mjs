@@ -3,7 +3,8 @@
 import assert from 'node:assert/strict';
 import {configureTaskProps,selectedParameters,selectedModelIds} from '../../subagent-settings.mjs';
 export function verifySubagentSettings(source) {
- const match=source.match(/function ([\w$]+)\(e\)\{const t=\(\)=>!1,([\w$]+)=([\w$]+)\(e\),([\w$]+)=null!=\2\?\2:e\.localProvider;/);
+ // Up to 3.22 the nullish fallback is down-levelled; from 3.24 it is native.
+ const match=source.match(/function ([\w$]+)\(e\)\{const t=\(\)=>!1,([\w$]+)=([\w$]+)\(e\)(?:,([\w$]+)=null!=\2\?\2:e\.localProvider|\?\?e\.localProvider);/);
  assert.ok(match,'Native local task factory found');
  const tail=source.slice(match.index),end=tail.search(/function [\w$]+\(e\)\{return e instanceof/);
  assert.ok(end>0,'Native local task factory end found');

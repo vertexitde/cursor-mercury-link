@@ -7,7 +7,7 @@ Updated on September 29, 2026.
 | Component | Version |
 | --- | --- |
 | Operating system | Windows, x64 |
-| Cursor | 3.22.12, commit `3a92974361033b2051526321308c2740fe5912c0` (earlier reviewed builds: 3.22.9, 3.22.5, 3.21.18, 3.21.16, 3.21.13, 3.21.12 and 3.21.9) |
+| Cursor | 3.24.12, commit `37b865941ccb31e2fc90c685157534efca87f960` (earlier reviewed builds: 3.22.12, 3.22.9, 3.22.5, 3.21.18, 3.21.16, 3.21.13, 3.21.12 and 3.21.9) |
 | Node.js | 26.7.0 |
 | Companion patches | cursor-gpt-link and cursor-claude-link, both installed for the same build |
 
@@ -71,6 +71,10 @@ Verified without touching an installation, against copies of the original 3.22.9
 - a dry run on a copy of a real configuration, with `ssh -G` used to confirm that OpenSSH parses the result, attaches the three forwards to a configured host and leaves an unrelated host without any.
 
 Not yet confirmed: a live remote turn. The host's own runtime under `~/.cursor-server` is unpatched, so reasoning effort forwarding and the subagent model repairs are missing there.
+
+## Cursor 3.24.12 update
+
+Cursor 3.24.12 (3.23 was skipped) renamed most derived symbols and changed the structure in several places. The release changed more than names: the model picker went through the React compiler, so the subscription sections now go into a memoized fragment that is rebuilt while they exist; the run gate no longer passes `localMode` in its options; both runtime bundles ship native `??`, `?.`, async functions and object spreads; the two protobuf messages the action manager uses were renamed (`QF` to `QFf`, `RG` to `RGk`) and are now found by their role; and the engine's run parameters rotated. `scripts/derive-symbols.mjs` derives the compiled picker as `promotedRender` and `sectionsReturn` instead of `promotedAnchor`. Supported builds are now read from the reviewed `build-<version>.json` and `symbols-<version>.json` pairs, and builds after 3.22.12 share `install-build.mjs`. Both verification scenarios and the unit tests pass, the old 3.22.12 tree still verifies, and the patch was installed on a local 3.24.12 on top of cursor-gpt-link.
 
 ## Cursor 3.22.12 update
 

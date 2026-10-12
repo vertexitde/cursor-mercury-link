@@ -13,7 +13,7 @@ import {patchWorkbench, patchRuntime, providerConfigBranch, mercuryReasoningBran
 import {settingsCardSrc, apiKeyName} from '../settings-card.mjs';
 import {pickerSectionHelpersSrc} from '../picker-sections.mjs';
 import {prefix, providerModels} from '../models.mjs';
-import {supportedVersions, tunnelledBuilds} from '../build-support.mjs';
+import {supportedVersions, isTunnelled} from '../build-support.mjs';
 import {verifyConversationActionsWorkbench, verifyConversationActionsRuntime} from './checks/conversation-actions-check.mjs';
 import {verifySubagentLifecycle} from './checks/subagent-lifecycle-check.mjs';
 import {verifySubagentRegistration} from './checks/subagent-registration-check.mjs';
@@ -29,7 +29,7 @@ const here = path.dirname(new URL(import.meta.url).pathname.replace(/^\/([A-Za-z
 const version = args.version ?? supportedVersions[0];
 const symbols = JSON.parse(fs.readFileSync(path.join(here, '..', `symbols-${version}.json`), 'utf8'));
 // Builds that let the agent run on the SSH host instead of the dedicated UI runtime.
-const remoteTunnel = tunnelledBuilds.includes(version);
+const remoteTunnel = isTunnelled(version);
 const config = {port:43189, key:'0'.repeat(64)};
 
 function bundleFiles(dir) {
@@ -127,7 +127,8 @@ function verifyRuntime(content) {
   const effort = content.match(/"none"===([\w$]+)\?void 0:\1\}\(([\w$]+)\);/);
   assert.ok(content.includes(effort[0] + mercuryReasoningBranch(effort[2])), 'reasoning branch wired');
   const header = content.match(/function\(e,t,[\w$]+,[\w$]+,[\w$]+,[\w$]+=!1,i\)\{const a=function\(e\)\{/);
-  const end = content.slice(header.index).search(/\}\([\w$]+,t,[\w$]+,[\w$]+,[\w$]+,null!=[\w$]+&&[\w$]+,a\)/) + header.index;
+  // The flag argument is null!=o&&o up to 3.22 and o??!1 from 3.24.
+  const end = content.slice(header.index).search(/\}\([\w$]+,t,[\w$]+,[\w$]+,[\w$]+,(?:null!=([\w$]+)&&\1|[\w$]+\?\?!1),a\)/) + header.index;
   const normalize = new Function('return (' + content.slice(header.index, end + 1) + ')')();
   for (const value of ['instant', 'low', 'medium', 'high']) {
     const request = {reasoning:{effort:'x'}, service_tier:'priority'};
@@ -144,7 +145,8 @@ function verifyCatalogCapabilities(content) {
   const types = content.match(/const ([\w$]+)=new Set\((\["chat_completions",[^\]]*\])\),([\w$]+)=new Set\(\[\.\.\.\1,"anthropic_messages"\]\)/);
   assert.ok(types, 'Native API type list found');
   const known = new Set([...JSON.parse(types[2]), 'anthropic_messages']);
-  assert.ok(content.includes('return!1;return ') && /!0===n\.supports_tool_use&&!0===n\.supports_streaming&&!0===\(null===\(t=n\.output_modalities\)/.test(content), 'Native extended capability check found');
+  // Down-levelled optional chaining up to 3.22, native ?. from 3.24.
+  assert.ok(content.includes('return!1;return ') && /!0===([\w$]+)\.supports_tool_use&&!0===\1\.supports_streaming&&!0===(?:\(null===\([\w$]+=\1\.output_modalities\)|\1\.output_modalities\?\.includes\("text"\))/.test(content), 'Native extended capability check found');
   for (const entry of providerModels()) {
     const c = entry.capabilities;
     assert.ok(entry.api_types.some(type => known.has(type)) && c.supports_tool_use === true && c.supports_streaming === true && c.output_modalities.includes('text'),

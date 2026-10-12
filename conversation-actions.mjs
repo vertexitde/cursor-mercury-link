@@ -162,26 +162,44 @@ export function patchConversationActionsWorkbench(source,surface,prefix){
     [subscriptionActionModel,createSubscriptionActionChannel,runSubscriptionActions].map(fn=>fn.toString()).join('\n')+'\n'+source;
 }
 
+// One distinct name for a role, or a precise error.
+function onlyName(source,pattern,label,group=1){
+  const names=new Set([...source.matchAll(pattern)].map(m=>m[group]));
+  if(names.size!==1)throw new Error(label+' export is ambiguous or missing: '+[...names].join(', '));
+  return [...names][0];
+}
+
 export function patchConversationActionsRuntime(source,prefix){
   const combined=registry(source,prefix);if(combined)return combined;
   // The two runtime bundles minify this generator differently and Cursor 3.21.1
   // rotated their local names, so read the symbols out of the match.
-  const engines=[...source.matchAll(/new [\w$]+\([\w$]+\.promptSession\),new ([\w$]+)\);yield ([\w$]+)\.runStream\(e,[\w$]+\([\w$]+,([\w$]+)\),([\w$]+)\(([\w$]+),\3\)/g)];
+  // Up to 3.22 the runtimes were down-levelled to generators (yield); from 3.24
+  // they ship native async functions (await).
+  const engines=[...source.matchAll(/new [\w$]+\([\w$]+\.promptSession\),new ([\w$]+)\);(yield|await) ([\w$]+)\.runStream\(e,[\w$]+\([\w$]+,([\w$]+)\),([\w$]+)\(([\w$]+),\4\)/g)];
   if(engines.length!==1)throw new Error('Local engine receiver anchor is not unique');
-  const [receiver,inbox,engine,privacy,convert]=engines[0];
+  const [receiver,inbox,suspend,engine,privacy,convert]=engines[0];
   const engineStart=engines[0].index;
   const moduleStart=source.lastIndexOf('class ',engineStart);
-  const runHeader=source.slice(moduleStart,engineStart).match(/run\(e,t,[\w$]+,[\w$]+,[\w$]+,[\w$]+,i,a,l,([\w$]+),([\w$]+)\)/);
+  // The engine's run takes eleven parameters; their names rotate between
+  // builds (…,i,a,l,c,u up to 3.22, …,i,a,c,l,u in 3.24), their order does not.
+  const runHeader=source.slice(moduleStart,engineStart).match(/run\(((?:[\w$]+,){10}[\w$]+)\)\{/);
   if(!runHeader)throw new Error('Local engine run options missing');
-  const opts=runHeader[2];
+  const runParams=runHeader[1].split(','),manager=runParams[6],opts=runParams[10];
   // Resolve the protobuf namespace from this module instead of assuming the
   // entry-point namespace or the symbols used by the other runtime bundle.
-  const planMessages=new Set([...source.matchAll(/([\w$]+)\.RG[.(]/g)].map(m=>m[1]));
-  const namespaces=[...source.matchAll(/([\w$]+)\.QF[.(]/g)].filter(m=>planMessages.has(m[1]));
+  // The two messages are exported under minified names that change between
+  // builds (QF and RG up to 3.22, QFf and RGk in 3.24), so find them by what
+  // they are used for: the action that carries a user message or a plan, and
+  // the user message rebuilt in agent mode.
+  const actionName=onlyName(source,/new [\w$]+\.([\w$]+)\(\{action:\{case:"(?:userMessageAction|executePlanAction)"/g,'Conversation action message');
+  const messageName=onlyName(source,/new ([\w$]+)\.([\w$]+)\(\{\.\.\.t\}\),[^;]{0,120}?t\.mode=\1\.[\w$]+\.AGENT/g,'User message',2);
+  const member=name=>new RegExp('([\\w$]+)\\.'+name.replace(/\$/g,'\\$')+'[.(]','g');
+  const planMessages=new Set([...source.matchAll(member(messageName))].map(m=>m[1]));
+  const namespaces=[...source.matchAll(member(actionName))].filter(m=>planMessages.has(m[1]));
   if(!namespaces.length)throw new Error('Conversation action protobuf namespace missing');
   const ns=namespaces.reduce((best,m)=>Math.abs(m.index-engineStart)<Math.abs(best.index-engineStart)?m:best)[1];
-  const replacement=receiver.replace('new '+inbox,`subscriptionActionReceiver(i,${opts}.subscriptionActionChannel,bytes=>${convert}(${ns}.QF.fromBinary(bytes),${privacy}),new ${inbox})`)
-    .replace(';yield ',`;${engine}.actionHandlers.get("executePlanAction").__subscriptionPlanPrepends=${opts}.subscriptionActionChannel?${opts}.subscriptionPlanPrepends?.map(bytes=>${ns}.RG.fromBinary(Uint8Array.from(bytes))):undefined;yield `);
+  const replacement=receiver.replace('new '+inbox,`subscriptionActionReceiver(${manager},${opts}.subscriptionActionChannel,bytes=>${convert}(${ns}.${actionName}.fromBinary(bytes),${privacy}),new ${inbox})`)
+    .replace(`;${suspend} `,`;${engine}.actionHandlers.get("executePlanAction").__subscriptionPlanPrepends=${opts}.subscriptionActionChannel?${opts}.subscriptionPlanPrepends?.map(bytes=>${ns}.${messageName}.fromBinary(Uint8Array.from(bytes))):undefined;${suspend} `);
   source=once(source,receiver,replacement);
   // Locate the plan initializer by its unique file-content resolution.
   const pattern=/async initializeConversation\(e,t,[\w$]+,([\w$]+),[\w$]+\)\{const\{requestContext:([\w$]+),provenance:[\w$]+\}=await [\w$]+\(([^;]+?)\),([\w$]+)=t\.planFileContent/;

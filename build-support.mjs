@@ -2,11 +2,24 @@ import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
 import crypto from 'node:crypto';
+import {fileURLToPath} from 'node:url';
 
-export const supportedVersions = ['3.22.12', '3.22.9', '3.22.5', '3.21.18', '3.21.16', '3.21.13', '3.21.12', '3.21.9'];
-// Builds where a remote session runs the agent on the SSH host and reaches the
+// A build is supported when its reviewed build-<version>.json and
+// symbols-<version>.json are here. Newest first.
+export function compareVersions(a, b) {
+  const x = a.split('.').map(Number), y = b.split('.').map(Number);
+  for (let i = 0; i < Math.max(x.length, y.length); i++) if ((x[i] ?? 0) !== (y[i] ?? 0)) return (x[i] ?? 0) - (y[i] ?? 0);
+  return 0;
+}
+export const atLeast = (version, min) => compareVersions(version, min) >= 0;
+const here = path.dirname(fileURLToPath(import.meta.url));
+export const supportedVersions = fs.readdirSync(here)
+  .map(name => name.match(/^build-(\d+\.\d+\.\d+)\.json$/)?.[1])
+  .filter(version => version && fs.existsSync(path.join(here, 'symbols-' + version + '.json')))
+  .sort((a, b) => compareVersions(b, a));
+// From 3.22.9 a remote session runs the agent on the SSH host and reaches the
 // bridge through an ssh reverse forward, instead of the dedicated UI runtime.
-export const tunnelledBuilds = ['3.22.9', '3.22.12'];
+export const isTunnelled = version => atLeast(version, '3.22.9');
 export const sha256 = value => crypto.createHash('sha256').update(value).digest('hex');
 
 export function cursorRoot() {

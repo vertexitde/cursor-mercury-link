@@ -3,7 +3,7 @@ import path from 'node:path';
 import crypto from 'node:crypto';
 import {execFileSync} from 'node:child_process';
 import {fileURLToPath} from 'node:url';
-import {cursorRoot, requireSupportedOriginals, sha256, tunnelledBuilds} from './build-support.mjs';
+import {cursorRoot, requireSupportedOriginals, sha256, isTunnelled} from './build-support.mjs';
 import {applyToDisk, readBlock, sshConfigPath} from './ssh-forwarding.mjs';
 import {syncKnownHosts} from './remote-runtime.mjs';
 import {link as remoteLink, marker as remoteMarker, prefix as remotePrefix, patchRuntime as remotePatchRuntime} from './runtime-link.mjs';
@@ -57,7 +57,7 @@ const symbols = JSON.parse(fs.readFileSync(path.join(dir, 'symbols-' + version +
 const pending = [];
 for (const surface of ['desktop', 'glass']) {
   const target = path.join(root, 'out/vs/workbench/workbench.' + surface + '.main.js');
-  pending.push({path:target, content:patchWorkbench(fs.readFileSync(target, 'utf8'), surface, symbols[surface], config, {remoteTunnel:tunnelledBuilds.includes(version)})});
+  pending.push({path:target, content:patchWorkbench(fs.readFileSync(target, 'utf8'), surface, symbols[surface], config, {remoteTunnel:isTunnelled(version)})});
 }
 for (const name of ['cursor-agent-exec', 'cursor-local-agent-runtime']) {
   const target = path.join(root, 'extensions', name, 'dist/main.js');
