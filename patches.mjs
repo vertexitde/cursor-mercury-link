@@ -6,6 +6,7 @@ import {patchConversationActionsWorkbench, patchConversationActionsRuntime} from
 import {patchSubagentModel} from './subagent-model.mjs';
 import {patchSubagentSettingsWorkbench, patchSubagentSettingsRuntime} from './subagent-settings.mjs';
 import {patchMaxMode} from './max-mode.mjs';
+import {patchAgentHost} from './agent-host.mjs';
 import {pickerModels, prefix} from './models.mjs';
 
 export const keyHeader = 'x-inception-api-key';
@@ -84,7 +85,7 @@ export function patchWorkbench(source, surface, symbols, config, {remoteTunnel =
   source = patchMaxMode(patchSubagentSettingsWorkbench(source));
   source = patchSubagentBubbles(source, surface, s);
   source = patchSubagentLifecycle(source, surface, prefix, s);
-  source = patchConversationActionsWorkbench(source, surface, prefix);
+  source = patchAgentHost(patchConversationActionsWorkbench(source, surface, prefix));
   return source;
 }
 

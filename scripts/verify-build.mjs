@@ -13,7 +13,8 @@ import {patchWorkbench, patchRuntime, providerConfigBranch, mercuryReasoningBran
 import {settingsCardSrc, apiKeyName} from '../settings-card.mjs';
 import {pickerSectionHelpersSrc} from '../picker-sections.mjs';
 import {prefix, providerModels} from '../models.mjs';
-import {supportedVersions, isTunnelled} from '../build-support.mjs';
+import {supportedVersions, isTunnelled, atLeast} from '../build-support.mjs';
+import {verifyAgentHost} from './checks/agent-host-check.mjs';
 import {verifyConversationActionsWorkbench, verifyConversationActionsRuntime} from './checks/conversation-actions-check.mjs';
 import {verifySubagentLifecycle} from './checks/subagent-lifecycle-check.mjs';
 import {verifySubagentRegistration} from './checks/subagent-registration-check.mjs';
@@ -163,6 +164,7 @@ async function scenario(label, dir) {
     const content = patchWorkbench(fs.readFileSync(files[surface], 'utf8'), surface, symbols[surface], config, {remoteTunnel});
     syntax(`${label}-${surface}`, content);
     verifyWorkbenchWiring(content, surface);
+    if (atLeast(version, '3.24.12')) verifyAgentHost(content);
     await verifySettingsCard(content, surface);
     await verifyProviderConfig(content, surface);
     console.log(`${label} ${surface}: syntax, unique anchors, picker, settings card and provider configuration passed.`);
