@@ -18,7 +18,10 @@ export async function verifySubagentLifecycle(source, prefixes) {
   // different names. Resolve them through one stub: reactive readers are called
   // with a thunk and must return its value, predicates must stay falsy so the
   // local path is exercised, and service identities are never dereferenced.
-  const scope=new Proxy({subscriptionComposer,__subscriptionSubagentPrefixes:prefixes},{
+  // From 3.25 classifyBubble keeps the raw composer next to the reactive one
+  // (const r=xl(t);n={composer:t,rawComposer:r,…}); that unwrap is an identity.
+  const unwrap=source.match(/const ([\w$]+)=([\w$]+)\([\w$]+\);[\w$]+=\{composer:[\w$]+,rawComposer:\1,/)?.[2];
+  const scope=new Proxy({subscriptionComposer,__subscriptionSubagentPrefixes:prefixes,...(unwrap?{[unwrap]:value=>value}:{})},{
     has:()=>true,
     get:(target,key)=>key===Symbol.unscopables?undefined
       :key in target?target[key]:value=>typeof value==='function'?value():false});

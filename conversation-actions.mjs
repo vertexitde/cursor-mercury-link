@@ -173,9 +173,10 @@ export function patchConversationActionsRuntime(source,prefix){
   const combined=registry(source,prefix);if(combined)return combined;
   // The two runtime bundles minify this generator differently and Cursor 3.21.1
   // rotated their local names, so read the symbols out of the match.
+  // 3.25 passes retry options to the prompt session as well.
   // Up to 3.22 the runtimes were down-levelled to generators (yield); from 3.24
   // they ship native async functions (await).
-  const engines=[...source.matchAll(/new [\w$]+\([\w$]+\.promptSession\),new ([\w$]+)\);(yield|await) ([\w$]+)\.runStream\(e,[\w$]+\([\w$]+,([\w$]+)\),([\w$]+)\(([\w$]+),\4\)/g)];
+  const engines=[...source.matchAll(/new [\w$]+\([\w$]+\.promptSession(?:,[^()]*)?\),new ([\w$]+)\);(yield|await) ([\w$]+)\.runStream\(e,[\w$]+\([\w$]+,([\w$]+)\),([\w$]+)\(([\w$]+),\4\)/g)];
   if(engines.length!==1)throw new Error('Local engine receiver anchor is not unique');
   const [receiver,inbox,suspend,engine,privacy,convert]=engines[0];
   const engineStart=engines[0].index;

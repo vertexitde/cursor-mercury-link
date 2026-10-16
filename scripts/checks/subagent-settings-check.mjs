@@ -6,7 +6,10 @@ export function verifySubagentSettings(source) {
  // Up to 3.22 the nullish fallback is down-levelled; from 3.24 it is native.
  const match=source.match(/function ([\w$]+)\(e\)\{const t=\(\)=>!1,([\w$]+)=([\w$]+)\(e\)(?:,([\w$]+)=null!=\2\?\2:e\.localProvider|\?\?e\.localProvider);/);
  assert.ok(match,'Native local task factory found');
- const tail=source.slice(match.index),end=tail.search(/function [\w$]+\(e\)\{return e instanceof/);
+ // The factory ends where the source first parses as one function; 3.25 no
+ // longer follows it with the same neighbour.
+ const tail=source.slice(match.index);
+ let end=-1;for(let i=tail.indexOf('}');i>0&&i<20000;i=tail.indexOf('}',i+1)){try{new Function('return ('+tail.slice(0,i+1)+')');end=i+1;break;}catch{}}
  assert.ok(end>0,'Native local task factory end found');
  const fn=tail.slice(0,end);
  const resolver=fn.match(/[\w$]+=([\w$]+)\("grok-4.5"/)[1];

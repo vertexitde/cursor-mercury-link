@@ -13,15 +13,20 @@ export async function verifySubagentModels(source) {
  const role=(label,pattern)=>{const m=body.match(pattern);assert.ok(m,'Native resolver '+label+' found');return m;};
  const explore=role('subagent type',/([\w$]+)\(t\.subagent_type\)===([\w$]+)/);
  const policy=role('force policy',/===([\w$]+)&&void 0!==[\w$]+\)throw new ([\w$]+)\(/);
- const speed=role('speed tiers',/endsWith\("-fast"\)\?([\w$]+):"default"===[\w$]+\|\|"auto"===[\w$]+\?([\w$]+):void 0/);
+ const speed=body.match(/endsWith\("-fast"\)\?([\w$]+):"default"===[\w$]+\|\|"auto"===[\w$]+\?([\w$]+):void 0/);
+ const directLookup=body.match(/=([\w$]+)\([\w$]+,[\w$]+\.modelsBySlug\)/);
+ const classify=directLookup?null:role('slug lookup',/,[\w$]+=([\w$]+)\(t,r,n\);if\("composer_hint"===/);
+ const shims=body.match(/[\w$]+\.shims\?\?new ([\w$]+)/),routes=body.match(/=([\w$]+)\[[\w$]+\.route\]/);
  const vars={
   [explore[1]]:identity, [explore[2]]:'explore',
-  [role('canonical slug',/\(t\.defaultModelIds\?\?\[\]\)\.map\(e=>([\w$]+)\(e\)\)/)[1]]:identity,
+  [role('canonical slug',/\(t\.defaultModelIds\?\?\[\]\)\.map\(\(?e=>([\w$]+)\(e\)\)/)[1]]:identity,
   [role('generic base check',/=[\w$]+&&\(([\w$]+)\([\w$]+\)\|\|[\w$]+\.has\([\w$]+\)\)/)[1]]:()=>false,
   [role('forced model resolver',/([\w$]+)\(\{subagentModelForcePolicy:/)[1]]:forced,
   [policy[1]]:'forced', [policy[2]]:Error,
-  [role('slug lookup',/=([\w$]+)\([\w$]+,[\w$]+\.modelsBySlug\)/)[1]]:identity,
-  [speed[1]]:'fast', [speed[2]]:'auto',
+  ...(directLookup?{[directLookup[1]]:identity}:{[classify[1]]:(arg,models)=>models.modelsBySlug.has(arg)?{kind:'catalog',modelId:arg}:{kind:'unknown'}}),
+  ...(speed?{[speed[1]]:'fast',[speed[2]]:'auto'}:{}),
+  ...(shims?{[shims[1]]:class{report(){}flush(){}}}:{}),
+  ...(routes?{[routes[1]]:new Proxy({},{get:()=>({})})}:{}),
   __normalizeClaudeSubagentModel:identity,__normalizeChatgptSubagentModel:identity,__normalizeMercurySubagentModel:normalizeMercurySubagentModel};
  const make=values=>new Function(...Object.keys(values),'return ('+body+')')(...Object.values(values));
  const resolve=make(vars),parent='inception-mercury/mercury-2.5';

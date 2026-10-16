@@ -9,9 +9,10 @@ Companion projects: [cursor-gpt-link](https://github.com/vertexitde/cursor-gpt-l
 | Item | Current status |
 | --- | --- |
 | Client platform | Windows x64 |
-| Supported Cursor | 3.24.12, commit `37b865941ccb31e2fc90c685157534efca87f960`; 3.22.12, commit `3a92974361033b2051526321308c2740fe5912c0`; 3.22.9, commit `2ca0f45baa06796a86f6c6ba2b9bedacaf94c370`; 3.22.5, commit `a00aa8754ab5bae70b637d98e126f9dbd4e1e5d0`; 3.21.18, commit `c4730f7d93d787d9ab120af715999f0345ee5bc0`; 3.21.16, commit `8ae78e8eee1e63479c7e0504b664bc0a80c68000`; 3.21.13, commit `e44a49c17e334d442e58bbde931d791200f014a0`; 3.21.12, commit `05ddb9e824590e2c1db6bd2548dd71bf67ac9d20`; 3.21.9, commit `9998796a6096ce83d83a9332bfe7473b985db750` |
+| Supported Cursor | 3.25.9, commit `5d4df965746c5d09740842fc0f1331ba1c157830`; 3.24.12, commit `37b865941ccb31e2fc90c685157534efca87f960`; 3.22.12, commit `3a92974361033b2051526321308c2740fe5912c0`; 3.22.9, commit `2ca0f45baa06796a86f6c6ba2b9bedacaf94c370`; 3.22.5, commit `a00aa8754ab5bae70b637d98e126f9dbd4e1e5d0`; 3.21.18, commit `c4730f7d93d787d9ab120af715999f0345ee5bc0`; 3.21.16, commit `8ae78e8eee1e63479c7e0504b664bc0a80c68000`; 3.21.13, commit `e44a49c17e334d442e58bbde931d791200f014a0`; 3.21.12, commit `05ddb9e824590e2c1db6bd2548dd71bf67ac9d20`; 3.21.9, commit `9998796a6096ce83d83a9332bfe7473b985db750` |
 | Models | Mercury 2.5 (260K context), Mercury 2 (128K context) |
 | Inception API | Text, tool calls, parallel tool calls and streaming verified live on September 17, 2026 |
+| Cursor 3.25.9 | Symbols re-derived and reviewed; picker fragment, prompt session and subagent resolver changes handled; all automated checks pass standalone |
 | Cursor 3.24.12 | Symbols re-derived and reviewed, compiled picker and native runtime syntax supported; all automated checks pass standalone and on top of both companions |
 | Cursor 3.22.12 | Symbols re-derived and reviewed; all automated checks pass standalone and on top of both companions |
 | Standalone and combined install | Automated checks pass on original bundles and on top of cursor-gpt-link and cursor-claude-link |

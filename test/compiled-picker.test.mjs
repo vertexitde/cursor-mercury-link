@@ -29,7 +29,7 @@ test('compiled picker: the rebuild condition a companion wrote is reused', () =>
 });
 
 test('supported builds come from the reviewed build and symbol files', () => {
-  assert.equal(supportedVersions[0], '3.24.12');
+  assert.ok(supportedVersions.includes('3.24.12') && supportedVersions.every((v, i, all) => i === 0 || atLeast(all[i - 1], v)), 'newest first');
   assert.ok(supportedVersions.includes('3.21.9'));
   assert.ok(isTunnelled('3.24.12') && isTunnelled('3.22.9') && !isTunnelled('3.22.5'));
   assert.ok(atLeast('3.24.12', '3.22.12') && !atLeast('3.22.12', '3.24.1'));

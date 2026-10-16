@@ -100,7 +100,9 @@ export function patchSubagentLifecycle(source, surface, prefix, symbols) {
     'async _runSubagent('+arg+','+handle+',n){return runSubscriptionSubagent(this,'+arg+','+handle+',n,__subscriptionSubagentPrefixes)}async _subscriptionNativeRunSubagent('+arg+','+handle+',n){');
   // This object survives a switch while its conversationMap can be replaced.
   const stale = '(n===void 0||n.composer!=='+handle+')&&(n={composer:'+handle+',map:'+untrack+'(()=>'+handle+'.conversationMap)},this.cachedConversationMapRef=n);';
-  source = once(source, stale, stale.replace(')&&(n=', '||('+handle+'.subagentInfo&&subscriptionComposer(this.composerDataService,this.composerId,__subscriptionSubagentPrefixes)&&n.map!=='+untrack+'(()=>'+handle+'.conversationMap)))&&(n='));
+  // From 3.25 Cursor drops the cache itself when the raw map is replaced
+  // (n.rawComposer.conversationMap!==n.rawMap), so there is nothing to add.
+  if (!source.includes('n.composer!=='+handle+'||n.rawComposer.conversationMap!==n.rawMap')) source = once(source, stale, stale.replace(')&&(n=', '||('+handle+'.subagentInfo&&subscriptionComposer(this.composerDataService,this.composerId,__subscriptionSubagentPrefixes)&&n.map!=='+untrack+'(()=>'+handle+'.conversationMap)))&&(n='));
   // There are several transcript implementations; anchor the Solid composer one.
   // Cursor 3.21.1 returns an empty disposable when the store is already gone;
   // do not hydrate through a disposed store. Cursor 3.22.5 turned that ternary
