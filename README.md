@@ -2,7 +2,7 @@
 
 An experimental patch that adds Inception's Mercury models to Cursor. You enter your Inception API key in Cursor's settings, next to the Google and OpenAI keys. Cursor keeps its agent harness, tools and approval controls. No extension is installed.
 
-Companion projects: [cursor-gpt-link](https://github.com/vertexitde/cursor-gpt-link) and [cursor-claude-link](https://github.com/vertexitde/cursor-claude-link). All three can be installed together.
+Companion projects: [cursor-gpt-link](https://github.com/vertexitde/cursor-gpt-link), [cursor-claude-link](https://github.com/vertexitde/cursor-claude-link), [cursor-gemini-link](https://github.com/vertexitde/cursor-gemini-link) and [cursor-kimi-link](https://github.com/vertexitde/cursor-kimi-link). All five can be installed together, in the order ChatGPT, Claude, Mercury, Gemini, Kimi; remove them in reverse.
 
 ## Status
 
