@@ -68,7 +68,7 @@ export function patchWorkbench(source, surface, symbols, config, {remoteTunnel =
     source = once(source, s.runAnchor, s.runAnchor
       .replace('{const ', `{const __mercuryLocal=__isMercuryModel(${requested});const `)
       .replace(`localMode:${local}.localMode})`, `localMode:${local}.localMode||__mercuryLocal})`)
-      .replace(`if(${local}.localMode){`, `if(${local}.localMode||__mercuryLocal){`));
+      .replace(`${local}.localMode){`, `${local}.localMode||__mercuryLocal){`));
   }
   // Remote SSH: builds up to 3.22.5 kept the agent in the dedicated UI runtime
   // so the bridge stayed reachable. That runtime resolves paths with the

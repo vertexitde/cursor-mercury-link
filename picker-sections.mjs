@@ -5,6 +5,8 @@ export const legacyPickerSectionHelpersSrc='var __withSubscriptionPickerSections
 
 export const pickerSectionHelpersSrc='var __withSubscriptionPickerSections=function(g){const claude=[],chatgpt=[],mercury=[];const rest=function(list){const out=[];for(const m of list||[]){const n=m&&m.name;if(typeof n==="string"&&n.startsWith("claude-subscription/"))claude.push(m);else if(typeof n==="string"&&n.startsWith("chatgpt-codex/"))chatgpt.push(m);else if(typeof n==="string"&&n.startsWith("inception-mercury/"))mercury.push(m);else out.push(m)}return out};return{leading:rest(g.leading),promoted:rest(g.promoted),others:rest(g.others),claude,chatgpt,mercury}};';
 
+import {insertListSections} from './section-list.mjs';
+
 export function withSubscriptionPickerSections(g) {
   return new Function(pickerSectionHelpersSrc + 'return __withSubscriptionPickerSections;')()(g);
 }
@@ -51,8 +53,8 @@ export function patchPickerSections(source, once, symbols) {
   }
   if (!source.includes('"inception-mercury-models"')) {
     const section = modelsVar + '.mercury.length>0&&' + jsx + '(' + fmt + ',{models:' + modelsVar + '.mercury,title:"Inception Mercury",renderModel:' + renderModel + '},"inception-mercury-models")';
-    source = promotedAnchor
-      ? once(source, promotedAnchor, section + ',' + promotedAnchor)
+    source = symbols.sectionLists ? insertListSections(source, group => [`{id:"inception-mercury-models",items:${group}.mercury??[],title:"Inception Mercury"}`])
+      : promotedAnchor ? once(source, promotedAnchor, section + ',' + promotedAnchor)
       : insertCompiledSection(source, once, symbols, section);
   }
   return source;

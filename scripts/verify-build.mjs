@@ -53,7 +53,8 @@ async function verifySettingsCard(content, surface) {
   const s = symbols[surface];
   const src = settingsCardSrc(s);
   assert.ok(content.includes(src), 'settings card source present');
-  assert.ok(content.includes(`${s.keyJsx}(__MercuryApiKeyCard,{settingsWorkspace:n},"inception-api-key")`), 'card placed after the Google card');
+  const workspace = s.googleCardComposition.match(/\{settingsWorkspace:([\w$]+)\}\)$/)[1];
+  assert.ok(content.includes(`${s.keyJsx}(__MercuryApiKeyCard,{settingsWorkspace:${workspace}},"inception-api-key")`), 'card placed after the Google card');
   const calls = [], opened = [];
   const secrets = {get:async name => (calls.push(['get', name]), 'sk_saved'), set:async (name, value) => calls.push(['set', name, value]), delete:async name => calls.push(['delete', name])};
   const effects = [];
@@ -106,7 +107,12 @@ function verifyWorkbenchWiring(content, surface) {
   assert.deepEqual(grouped.mercury.map(m => m.name), [prefix + 'mercury-2']);
   assert.deepEqual(grouped.promoted.map(m => m.name), ['gpt-5']);
   assert.equal(grouped.claude.length + grouped.chatgpt.length, 2);
-  assert.ok(content.includes(`${s.modelsVar}.mercury.length>0&&${s.jsx}(${s.fmt},{models:${s.modelsVar}.mercury,title:"Inception Mercury",renderModel:${s.renderModel}},"inception-mercury-models")`), 'Mercury section rendered');
+  // From 3.31 the section is an entry in both picker lists, drawn by renderers
+  // that also show an entry's own trailing label.
+  if (s.sectionLists) {
+    assert.equal(content.match(/\{id:"inception-mercury-models",items:[\w$]+\.mercury\?\?\[\],title:"Inception Mercury"\}/g)?.length, 2, 'Mercury section listed in both views');
+    assert.equal(content.split('/*cursor-links: section trailing*/').length - 1, 2, 'both section renderers read an entry trailing label');
+  } else assert.ok(content.includes(`${s.modelsVar}.mercury.length>0&&${s.jsx}(${s.fmt},{models:${s.modelsVar}.mercury,title:"Inception Mercury",renderModel:${s.renderModel}},"inception-mercury-models")`), 'Mercury section rendered');
   assert.match(content, /getAvailableDefaultModels\(\)\{return __withMercuryModels\(/, 'default models include Mercury');
   assert.ok(content.includes(`${s.mapVar}=__withMercuryModels(`), 'mapped models include Mercury');
   assert.match(content, /__isMercuryModel\(u\?\.requestedModel\?\.modelId\?\?i\?\.modelId\)/, 'Mercury requests use the local runtime');
