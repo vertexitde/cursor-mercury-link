@@ -1,3 +1,5 @@
+import {settingsParts} from './settings-compat.mjs';
+
 export const apiKeyName = 'cursor-mercury-link.inceptionApiKey';
 export const apiKeyDashboard = 'https://platform.inceptionlabs.ai/dashboard/api-keys';
 
@@ -20,7 +22,9 @@ return ${s.keyJsx}(${s.card},{title:"Inception API Key",description,children:${s
 export function patchSettingsCard(source, once, s) {
   if (source.includes('function __MercuryApiKeyCard(')) throw new Error('Inception API key card already present');
   const fnAnchor = 'function ' + s.googleCard + '(';
-  source = once(source, fnAnchor, settingsCardSrc(s) + fnAnchor);
+  // From 3.32 the card is drawn through an adapter onto Cursor's new parts.
+  const parts = settingsParts('mercury', s.keyJsx, s);
+  source = once(source, fnAnchor, parts.adapter + settingsCardSrc({...s, card:parts.card, zs:parts.zs}) + fnAnchor);
   const [assigned, call] = [s.googleCardComposition.slice(0, s.googleCardComposition.indexOf('=') + 1), s.googleCardComposition.slice(s.googleCardComposition.indexOf('=') + 1)];
   const workspace = call.match(/\{settingsWorkspace:([\w$]+)\}\)$/)[1];
   return once(source, s.googleCardComposition,

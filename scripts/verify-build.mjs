@@ -9,7 +9,8 @@ import os from 'node:os';
 import path from 'node:path';
 import assert from 'node:assert/strict';
 import {execFileSync} from 'node:child_process';
-import {patchWorkbench, patchRuntime, providerConfigBranch, mercuryReasoningBranch} from '../patches.mjs';
+import {settingsParts} from '../settings-compat.mjs';
+import {patchWorkbench, patchRuntime, patchUi, uiRelative, providerConfigBranch, mercuryReasoningBranch} from '../patches.mjs';
 import {settingsCardSrc, apiKeyName} from '../settings-card.mjs';
 import {pickerSectionHelpersSrc} from '../picker-sections.mjs';
 import {prefix, providerModels} from '../models.mjs';
@@ -36,9 +37,9 @@ const config = {port:43189, key:'0'.repeat(64)};
 function bundleFiles(dir) {
   if (fs.existsSync(path.join(dir, '0-workbench.desktop.main.js'))) return {
     desktop:path.join(dir, '0-workbench.desktop.main.js'), glass:path.join(dir, '1-workbench.glass.main.js'),
-    exec:path.join(dir, '2-main.js'), runtime:path.join(dir, '3-main.js')};
+    exec:path.join(dir, '2-main.js'), runtime:path.join(dir, '3-main.js'), ui:path.join(dir, '6-workbench.anysphere-ui.js')};
   return {desktop:path.join(dir, 'out/vs/workbench/workbench.desktop.main.js'), glass:path.join(dir, 'out/vs/workbench/workbench.glass.main.js'),
-    exec:path.join(dir, 'extensions/cursor-agent-exec/dist/main.js'), runtime:path.join(dir, 'extensions/cursor-local-agent-runtime/dist/main.js')};
+    exec:path.join(dir, 'extensions/cursor-agent-exec/dist/main.js'), runtime:path.join(dir, 'extensions/cursor-local-agent-runtime/dist/main.js'), ui:path.join(dir, uiRelative)};
 }
 
 const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'cursor-mercury-link-verify-'));
@@ -51,8 +52,15 @@ function syntax(label, content) {
 
 async function verifySettingsCard(content, surface) {
   const s = symbols[surface];
-  const src = settingsCardSrc(s);
+  // From 3.32 the card is drawn through the adapter onto Cursor's new parts.
+  const parts = settingsParts('mercury', s.keyJsx, s);
+  const src = parts.adapter + settingsCardSrc({...s, card:parts.card, zs:parts.zs});
   assert.ok(content.includes(src), 'settings card source present');
+  if (s.cardNs) {
+    const esc = n => n.replace(/\$/g, '\\$');
+    assert.ok(new RegExp('SettingsSection\\$\\w+ as ' + esc(s.cardNs) + '[,}]').test(content), "adapter uses this build's SettingsSection");
+    assert.ok(new RegExp('SettingsRow\\$\\w+ as ' + esc(s.rowNs) + '[,}]').test(content), "adapter uses this build's SettingsRow");
+  }
   const workspace = s.googleCardComposition.match(/\{settingsWorkspace:([\w$]+)\}\)$/)[1];
   assert.ok(content.includes(`${s.keyJsx}(__MercuryApiKeyCard,{settingsWorkspace:${workspace}},"inception-api-key")`), 'card placed after the Google card');
   const calls = [], opened = [];
@@ -64,7 +72,8 @@ async function verifySettingsCard(content, surface) {
     [s.settingsService]:(workspace, id) => (assert.equal(id, 'OPENER'), {open:url => opened.push(url)}), [s.openerId]:'OPENER',
     [s.useState]:initial => [initial, () => {}], [s.useEffect]:effect => effects.push(effect),
     [s.jsxs]:jsx, [s.keyJsx]:jsx, [s.descriptionWrapper]:'Description', [s.link]:'Link', [s.card]:'Card', [s.keyInput]:'Input',
-    [s.zs]:{Root:'Root', Entry:'Entry'}, __mercuryApiKeyName:apiKeyName};
+    ...(s.cardNs ? {[s.cardNs]:{Root:'Section', Header:'Header', Title:'Title', Description:'Text', Group:'Group', Preview:'Preview'}, [s.rowNs]:{Root:'Row', Content:'Content', Title:'Label', Control:'Control'}}
+      : {[s.zs]:{Root:'Root', Entry:'Entry'}}), __mercuryApiKeyName:apiKeyName};
   const card = new Function(...Object.keys(scope), src + 'return __MercuryApiKeyCard;')(...Object.values(scope));
   const tree = card({settingsWorkspace:{}});
   assert.equal(tree.props.title, 'Inception API Key');
@@ -99,8 +108,8 @@ async function verifyProviderConfig(content, surface) {
   assert.equal(await make().call(service('sk'), {modelId:'claude-subscription/opus'}, {}), 'native', 'other models untouched');
 }
 
-function verifyWorkbenchWiring(content, surface) {
-  const s = symbols[surface];
+// The picker: on the surfaces up to 3.31, in the shared UI module from 3.32.
+function verifyPicker(content, s) {
   assert.ok(content.includes(pickerSectionHelpersSrc), 'three-provider picker helper present');
   const helper = new Function(pickerSectionHelpersSrc + 'return __withSubscriptionPickerSections;')();
   const grouped = helper({leading:[{name:prefix + 'mercury-2'}], promoted:[{name:'claude-subscription/opus'}, {name:'gpt-5'}], others:[{name:'chatgpt-codex/gpt-6'}]});
@@ -113,6 +122,11 @@ function verifyWorkbenchWiring(content, surface) {
     assert.equal(content.match(/\{id:"inception-mercury-models",items:[\w$]+\.mercury\?\?\[\],title:"Inception Mercury"\}/g)?.length, 2, 'Mercury section listed in both views');
     assert.equal(content.split('/*cursor-links: section trailing*/').length - 1, 2, 'both section renderers read an entry trailing label');
   } else assert.ok(content.includes(`${s.modelsVar}.mercury.length>0&&${s.jsx}(${s.fmt},{models:${s.modelsVar}.mercury,title:"Inception Mercury",renderModel:${s.renderModel}},"inception-mercury-models")`), 'Mercury section rendered');
+}
+
+function verifyWorkbenchWiring(content, surface) {
+  const s = symbols[surface];
+  if (!symbols.ui) verifyPicker(content, s);
   assert.match(content, /getAvailableDefaultModels\(\)\{return __withMercuryModels\(/, 'default models include Mercury');
   assert.ok(content.includes(`${s.mapVar}=__withMercuryModels(`), 'mapped models include Mercury');
   assert.match(content, /__isMercuryModel\(u\?\.requestedModel\?\.modelId\?\?i\?\.modelId\)/, 'Mercury requests use the local runtime');
@@ -174,11 +188,18 @@ async function scenario(label, dir) {
     await verifySettingsCard(content, surface);
     await verifyProviderConfig(content, surface);
     console.log(`${label} ${surface}: syntax, unique anchors, picker, settings card and provider configuration passed.`);
-    verifyMaxMode(content);
+    if (!symbols.ui) verifyMaxMode(content);
     await verifySubagentRegistration(content);
     await verifySubagentLifecycle(content, registry(content, '__subscriptionSubagentPrefixes'));
     await verifyConversationActionsWorkbench(content, registry(content, '__subscriptionActionPrefixes'));
     await verifyWorkbenchRouting(content, undefined, {remoteTunnel});
+  }
+  if (symbols.ui) {
+    const content = patchUi(fs.readFileSync(files.ui, 'utf8'), symbols.ui, config);
+    syntax(`${label}-ui`, content);
+    verifyPicker(content, symbols.ui);
+    verifyMaxMode(content);
+    console.log(`${label} ui: syntax, picker sections and Max mode passed.`);
   }
   for (const name of ['exec', 'runtime']) {
     const content = patchRuntime(fs.readFileSync(files[name], 'utf8'));
