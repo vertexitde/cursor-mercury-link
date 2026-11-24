@@ -70,7 +70,11 @@ export function patchWorkbench(source, surface, symbols, config, {remoteTunnel =
   source = once(source, provider[0], provider[0] + providerConfigBranch(`${provider[2]}?.requestedModel?.modelId??${provider[1]}?.modelId`, s.secretStorage));
 
   // Route Mercury requests through the local agent runtime.
-  const requested = 'u?.requestedModel?.modelId??i?.modelId';
+  // The run's own parameter names: the request options are the 11th, the
+  // request the 4th. From 3.32 u is a local declared after this point, so a
+  // fixed name threw on every request, whatever the model.
+  const params = s.runAnchor.match(/^async run\(([\w$,]+)\)/)[1].split(',');
+  const requested = `${params[10]}?.requestedModel?.modelId??${params[3]}?.modelId`;
   if (source.includes('const __chatgptLocal=')) source = once(source, 'const __chatgptLocal=', `const __chatgptLocal=__isMercuryModel(${requested})||`);
   else if (source.includes('const __claudeLocal=')) source = once(source, 'const __claudeLocal=', `const __claudeLocal=__isMercuryModel(${requested})||`);
   else {
